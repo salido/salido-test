@@ -4,7 +4,6 @@ require 'axlsx'
 require 'pry-byebug'
 require 'yaml/store'
 
-
 list = nil
 results = nil
 store = YAML::Store.new "data.yml"
@@ -43,22 +42,27 @@ p.workbook.add_worksheet do |sheet|
   environment = nil
   i=0
   list.each do |app_name|
-    mongodb_url = results[i].split("\n").select{|line| line[/MONGODB\:\/\//i]}
+    mongodb_url = results[i].split("\n").select{|line| line[/mongodb\:\/\/|mongodb\+srv\:\/\//i]}
 
     staging = mongodb_url.find{|e| e[/sbx-stg/]} ? true : false
     production = mongodb_url.find{|e| e[/ds015978/]} ? true : false
     production_storage = mongodb_url.find{|e| e[/ds125204/]} ? true : false
     # mongodb_url.reject!{|e| e[/sbx-stg|ds015978|ds125204/]}
-    mongodb_url.select!{|e| e[/ds015978|ds125204/]}
+
+    env = :production
+    env = :staging
+    mongodb_url.select!{|e| e[/ds015978|ds125204/]} if env == :production
+    mongodb_url.select!{|e| e[/sbx-stg/i]} if env == :staging
 
     environment_variables = mongodb_url.map{|e| e.split(":").first}
+    p app_name, environment_variables.length
     # binding.pry if mongodb_url.length > 0
 
     # heroku config -a ss-test-review-apps 
     # heroku config:set -a ss-test-review-apps a=2 b=3
     # heroku config:get -a ss-test-review-apps a b
-
-    if environment_variables.length > 0
+    if environment_variables.length > 0 && false
+      # p app_name
       # p app_name
       # p environment_variables
       # p "heroku config:get -a #{app_name.split(" ").first} #{environment_variables.join(' ')}"
@@ -66,20 +70,36 @@ p.workbook.add_worksheet do |sheet|
       # puts output
       j=0
       output.split("\n").each do |line|
+        # p line
         username = nil
-        username = 'salido' if line[/sally|itp-team|tim|platform\:/]
-        username = 'readonly' if line[/readonly\:/]
-        password = 'password'
+        if line[/sally|itp-team|tim|platform|salido\:/]
+          username = 'salido' 
+          password = 'DMNqhIEti96SqxUy' if env == :production
+          password = 'zjMu7GoNeYW3WZ8P' if env == :staging
+        end
+        if line[/readonly\:/]
+          username = 'readonly'
+          password = 'TuZLUp9jvuCuTAl4' if env == :production
+          password = 'AxLJs32P4R3zw8vG' if env == :staging
+        end
         line[/\d+\/(.*)\?/]
         database = $1
     
         server_name = "production-main" if line[/ds015978/]
         server_name = "production-storage" if line[/ds125204/]
+        mongo_code = "yxjqz" if line[/ds015978|ds125204/]
+        # server_name = "sbx-stg" if line[/sbx-stg/]
+        server_name = "sandbox-staging" if line[/sbx-stg/]
+        mongo_code = "jxu4y" if line[/sbx-stg/]
+        
+        replica_set_name = server_name.upcase if env == :staging
+        replica_set_name = server_name if env == :staging
+        replica_set_name = server_name if env == :production
 
         connection_string = if app_name == 'ss-geoffrey-pro'
-          "mongodb+srv://#{username}:#{password}@#{server_name}-jxu4y.mongodb.net/#{database}?retryWrites=true&w=majority"
+          "mongodb+srv://#{username}:#{password}@#{server_name}-#{mongo_code}.mongodb.net/#{database}?retryWrites=true&w=majority"
         else
-          "mongodb://#{username}:#{password}@#{server_name}-00-00-jxu4y.mongodb.net:27017,prod-shard-00-01-jxu4y.mongodb.net:27017,prod-shard-00-02-jxu4y.mongodb.net:27017/#{database}?ssl=true&replicaSet=prod-shard-0&authSource=admin&retryWrites=true&w=majority"
+          "mongodb://#{username}:#{password}@#{server_name}-shard-00-00-#{mongo_code}.mongodb.net:27017,#{server_name}-shard-00-01-#{mongo_code}.mongodb.net:27017,#{server_name}-shard-00-02-#{mongo_code}.mongodb.net:27017/#{database}?ssl=true&replicaSet=#{replica_set_name}-shard-0&authSource=admin&retryWrites=true&w=majority"
         end
 
         puts "heroku config:set -a #{app_name.split(" ").first} #{environment_variables[j]}=\"#{connection_string}\""
