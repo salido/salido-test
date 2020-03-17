@@ -72,11 +72,14 @@ p.workbook.add_worksheet do |sheet|
         password = 'password'
         line[/\d+\/(.*)\?/]
         database = $1
-      
+    
+        server_name = "production-main" if line[/ds015978/]
+        server_name = "production-storage" if line[/ds125204/]
+
         connection_string = if app_name == 'ss-geoffrey-pro'
-          "mongodb+srv://#{username}:#{password}@sbx-stg-jxu4y.mongodb.net/#{database}?retryWrites=true&w=majority"
+          "mongodb+srv://#{username}:#{password}@#{server_name}-jxu4y.mongodb.net/#{database}?retryWrites=true&w=majority"
         else
-          "mongodb://#{username}:#{password}@prod-shard-00-00-jxu4y.mongodb.net:27017,prod-shard-00-01-jxu4y.mongodb.net:27017,prod-shard-00-02-jxu4y.mongodb.net:27017/#{database}?ssl=true&replicaSet=prod-shard-0&authSource=admin&retryWrites=true&w=majority"
+          "mongodb://#{username}:#{password}@#{server_name}-00-00-jxu4y.mongodb.net:27017,prod-shard-00-01-jxu4y.mongodb.net:27017,prod-shard-00-02-jxu4y.mongodb.net:27017/#{database}?ssl=true&replicaSet=prod-shard-0&authSource=admin&retryWrites=true&w=majority"
         end
 
         puts "heroku config:set -a #{app_name.split(" ").first} #{environment_variables[j]}=\"#{connection_string}\""
