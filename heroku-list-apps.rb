@@ -42,9 +42,16 @@ p.workbook.add_worksheet do |sheet|
   environment = nil
   i=0
   list.each do |app_name|
-    mongodb_url = results[i].split("\n").select{|line| line[/mongodb\:\/\/|mongodb\+srv\:\/\//i]}
+    # unless app_name[/ss-geoffrey|ss-gandalf/]
+    # unless app_name[/test-review-app/]
+    #   i+=1
+    #   next
+    # end
 
-    staging = mongodb_url.find{|e| e[/sbx-stg/]} ? true : false
+    mongodb_url = results[i].split("\n").select{|line| line[/mongodb\:\/\/|mongodb\+srv\:\/\//i]}
+# p results[i]
+
+    staging = mongodb_url.find{|e| e[/sbx-stg|sandbox-staging/]} ? true : false
     production = mongodb_url.find{|e| e[/ds015978/]} ? true : false
     production_storage = mongodb_url.find{|e| e[/ds125204/]} ? true : false
     # mongodb_url.reject!{|e| e[/sbx-stg|ds015978|ds125204/]}
@@ -52,16 +59,23 @@ p.workbook.add_worksheet do |sheet|
     env = :production
     env = :staging
     mongodb_url.select!{|e| e[/ds015978|ds125204/]} if env == :production
-    mongodb_url.select!{|e| e[/sbx-stg/i]} if env == :staging
+    mongodb_url.select!{|e| e[/sbx-stg|sandbox-staging/i]} if env == :staging
 
     environment_variables = mongodb_url.map{|e| e.split(":").first}
-    p app_name, environment_variables.length
+    # p app_name, environment_variables.length
     # binding.pry if mongodb_url.length > 0
+
+    # binding.pry
+    # p app_name
+    # p '**mongodb_url'
+    # puts mongodb_url
+    # p '**environment_variable'
+    # puts environment_variables
 
     # heroku config -a ss-test-review-apps 
     # heroku config:set -a ss-test-review-apps a=2 b=3
     # heroku config:get -a ss-test-review-apps a b
-    if environment_variables.length > 0 && false
+    if environment_variables.length > 0
       # p app_name
       # p app_name
       # p environment_variables
@@ -82,21 +96,28 @@ p.workbook.add_worksheet do |sheet|
           password = 'TuZLUp9jvuCuTAl4' if env == :production
           password = 'AxLJs32P4R3zw8vG' if env == :staging
         end
-        line[/\d+\/(.*)\?/]
-        database = $1
+        # p '**line'
+        # p line
+        line[/\d+\/(.*)\?/] or line[/net\/(.*)\?/]
+        database = $1 
+        database = 'platform_staging' if database.empty?
+        # p '**database'
+        # p database
     
         server_name = "production-main" if line[/ds015978/]
         server_name = "production-storage" if line[/ds125204/]
         mongo_code = "yxjqz" if line[/ds015978|ds125204/]
         # server_name = "sbx-stg" if line[/sbx-stg/]
-        server_name = "sandbox-staging" if line[/sbx-stg/]
-        mongo_code = "jxu4y" if line[/sbx-stg/]
+        if line[/sbx-stg|sandbox-staging/]
+          server_name = "sandbox-staging"
+          mongo_code = "jxu4y"
+        end
         
-        replica_set_name = server_name.upcase if env == :staging
+        replica_set_name = server_name.to_s.upcase if env == :staging
         replica_set_name = server_name if env == :staging
         replica_set_name = server_name if env == :production
 
-        connection_string = if app_name == 'ss-geoffrey-pro'
+        connection_string = if app_name[/ss-geoffrey|ss-gandalf/]
           "mongodb+srv://#{username}:#{password}@#{server_name}-#{mongo_code}.mongodb.net/#{database}?retryWrites=true&w=majority"
         else
           "mongodb://#{username}:#{password}@#{server_name}-shard-00-00-#{mongo_code}.mongodb.net:27017,#{server_name}-shard-00-01-#{mongo_code}.mongodb.net:27017,#{server_name}-shard-00-02-#{mongo_code}.mongodb.net:27017/#{database}?ssl=true&replicaSet=#{replica_set_name}-shard-0&authSource=admin&retryWrites=true&w=majority"
