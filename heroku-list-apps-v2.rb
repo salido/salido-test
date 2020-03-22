@@ -48,13 +48,11 @@ package.workbook.add_worksheet do |worksheet|
                               :Environment,
                               :Count,
                           ]
-  i = 0
   heroku_list_of_application_environment_variables.keys.each do |application_name|
     # Select only environment variables with mongodb:// in the string, case insensitive
     environment_variables_with_mongodb = heroku_list_of_application_environment_variables[application_name]
                                            .split("\n")
                                            .select { |environment_variable| environment_variable[/mongodb\:\/\/|mongodb\+srv\:\/\//i] }
-
     # Detect the type of MongoDB database
     staging = environment_variables_with_mongodb.find { |e| e[/sbx-stg|sandbox-staging/] } ? true : false
     production = environment_variables_with_mongodb.find { |e| e[/ds015978/] } ? true : false
@@ -69,17 +67,9 @@ package.workbook.add_worksheet do |worksheet|
 
     environment_variables.keys.each do |name|
       value = environment_variables[name]
-      username = nil
-      if value[/sally|itp-team|tim|platform|salido\:/]
-        username = 'salido'
-        password = 'DMNqhIEti96SqxUy' if env == :production
-        password = 'zjMu7GoNeYW3WZ8P' if env == :staging
-      end
-      if value[/readonly\:/]
-        username = 'readonly'
-        password = 'TuZLUp9jvuCuTAl4' if env == :production
-        password = 'AxLJs32P4R3zw8vG' if env == :staging
-      end
+      username = 'salido' if value[/sally|itp-team|tim|platform|salido\:/]
+      username = 'readonly' if value[/readonly\:/]
+      password = passwords[env][username.to_sym]
 
       # RegEx to capture name of the database from the legacy string
       value[/\d+\/(.*)\?/] or value[/net\/(.*)\?/]
@@ -102,7 +92,6 @@ package.workbook.add_worksheet do |worksheet|
                           else
                             "mongodb://#{username}:#{password}@#{server_name}-shard-00-00-#{mongo_code}.mongodb.net:27017,#{server_name}-shard-00-01-#{mongo_code}.mongodb.net:27017,#{server_name}-shard-00-02-#{mongo_code}.mongodb.net:27017/#{database}?ssl=true&replicaSet=#{replica_set_name}-shard-0&authSource=admin&retryWrites=true&w=majority"
                           end
-
       puts "heroku config:set -a #{application_name.split(" ").first} #{name}=\"#{connection_string}\""
     end
 
@@ -115,8 +104,6 @@ package.workbook.add_worksheet do |worksheet|
                                 environment_variables_with_mongodb.length,
                             ]
     row.style = color if production or production_storage
-    i += 1
   end
-
 end
 package.serialize('worksheet.xlsx')
