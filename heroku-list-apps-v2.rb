@@ -55,7 +55,7 @@ package.workbook.add_worksheet do |worksheet|
                                            .select { |environment_variable| environment_variable[/mongodb\:\/\/|mongodb\+srv\:\/\//i] }
     # Detect the type of MongoDB database
     staging = environment_variables_with_mongodb.find { |e| e[/sbx-stg|sandbox-staging/] } ? true : false
-    production = environment_variables_with_mongodb.find { |e| e[/ds015978/] } ? true : false
+    production_main = environment_variables_with_mongodb.find { |e| e[/ds015978/] } ? true : false
     production_storage = environment_variables_with_mongodb.find { |e| e[/ds125204/] } ? true : false
 
     # Filter environment variables with MongoDB by production or staging
@@ -67,9 +67,9 @@ package.workbook.add_worksheet do |worksheet|
 
     environment_variables.keys.each do |name|
       value = environment_variables[name]
-      username = 'salido' if value[/sally|itp-team|tim|platform|salido\:/]
-      username = 'readonly' if value[/readonly\:/]
-      password = passwords[env][username.to_sym]
+      username = :salido if value[/sally|itp-team|tim|platform|salido\:/]
+      username = :readonly if value[/readonly\:/]
+      password = passwords[env][username]
 
       # RegEx to capture name of the database from the legacy string
       value[/\d+\/(.*)\?/] or value[/net\/(.*)\?/]
@@ -98,12 +98,12 @@ package.workbook.add_worksheet do |worksheet|
     row = worksheet.add_row [
                                 application_name,
                                 staging,
-                                production,
+                                production_main,
                                 production_storage,
                                 environment_variables,
                                 environment_variables_with_mongodb.length,
                             ]
-    row.style = color if production or production_storage
+    row.style = color if production_main or production_storage
   end
 end
 package.serialize('worksheet.xlsx')
