@@ -6,14 +6,7 @@ require 'yaml/store'
 # Select the type of database that the user wishes to generate the new configuration string for
 env = :staging or :production
 
-passwords = {}
-passwords[:production] = {}
-passwords[:staging] = {}
-passwords[:production][:salido] = ''
-passwords[:staging][:salido] = ''
-passwords[:production][:readonly] = ''
-passwords[:staging][:readonly] = ''
-
+passwords = nil
 store = YAML::Store.new 'passwords.yml'
 store.transaction do
   passwords = store[:passwords]
