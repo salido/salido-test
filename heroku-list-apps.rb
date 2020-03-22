@@ -12,6 +12,12 @@ store.transaction do
   results = store[:results]
 end
 
+# store = PStore.new 'data.json'
+# store.transaction do
+#   store[:list] = list
+#   store[:results] = results
+# end
+
 unless list && results
   # Find MONGODB URLs in Heroku
   list = `heroku list --team salido`.split("\n")[1..-1] 
